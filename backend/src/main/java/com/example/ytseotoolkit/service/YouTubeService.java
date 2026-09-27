@@ -4,13 +4,10 @@ import com.example.ytseotoolkit.dto.*;
 import com.example.ytseotoolkit.exception.YouTubeApiException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,13 +53,12 @@ public class YouTubeService {
 
     private JsonNode get(String path, Map<String, String> params) {
         assertApiKeyConfigured();
-        StringBuilder query = new StringBuilder(path).append("?key=").append(apiKey);
-        for (Map.Entry<String, String> e : params.entrySet()) {
-            query.append("&").append(e.getKey()).append("=")
-                    .append(URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8));
-        }
         try {
-            return restClient.get().uri(query.toString()).retrieve().body(JsonNode.class);
+            return restClient.get().uri(uriBuilder -> {
+                var requestUri = uriBuilder.path(path).queryParam("key", apiKey);
+                params.forEach((name, value) -> requestUri.queryParam(name, value));
+                return requestUri.build();
+            }).retrieve().body(JsonNode.class);
         } catch (HttpClientErrorException ex) {
             String msg = "YouTube API request failed: " + ex.getStatusCode();
             try {
